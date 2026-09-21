@@ -1,0 +1,29 @@
+# Python artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+build/
+dist/
+*.egg-info/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Experiment logs & models
+runs/
+wandb/
+checkpoints/
+*.pt
+*.pth
+*.log
+results/
+data/
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+*.swp

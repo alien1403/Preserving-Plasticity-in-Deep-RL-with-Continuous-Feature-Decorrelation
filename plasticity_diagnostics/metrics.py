@@ -17,3 +17,16 @@ def compute_effective_rank(activations: torch.Tensor, eps: float = 1e-10) -> flo
         return float(torch.exp(entropy).item())
     except Exception:
         return 1.0
+
+def compute_stable_rank(activations: torch.Tensor, eps: float = 1e-10) -> float:
+    if activations.ndim > 2:
+        activations = activations.reshape(activations.shape[0], -1)
+    centered = activations - activations.mean(dim=0, keepdim=True)
+    fro_norm_sq = torch.sum(centered ** 2)
+    try:
+        s = torch.linalg.svdvals(centered.to(torch.float32))
+        s_max_sq = (s[0] ** 2) if len(s) > 0 else torch.tensor(eps)
+        if s_max_sq < eps: return 1.0
+        return float((fro_norm_sq / s_max_sq).item())
+    except Exception:
+        return 1.0

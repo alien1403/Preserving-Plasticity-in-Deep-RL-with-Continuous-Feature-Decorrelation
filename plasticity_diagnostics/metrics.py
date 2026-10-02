@@ -30,3 +30,16 @@ def compute_stable_rank(activations: torch.Tensor, eps: float = 1e-10) -> float:
         return float((fro_norm_sq / s_max_sq).item())
     except Exception:
         return 1.0
+from typing import Tuple
+
+def compute_dormant_neurons(activations: torch.Tensor, tau: float = 0.05, eps: float = 1e-8) -> Tuple[float, torch.Tensor]:
+    if activations.ndim > 2:
+        activations = activations.mean(dim=(2, 3))
+    mean_act = torch.mean(torch.abs(activations), dim=0)
+    layer_mean = torch.mean(mean_act)
+    if layer_mean < eps:
+        dormant_mask = torch.ones(mean_act.shape[0], dtype=torch.bool, device=activations.device)
+        return 1.0, dormant_mask
+    normalized_scores = mean_act / (layer_mean + eps)
+    dormant_mask = normalized_scores <= tau
+    return float(dormant_mask.float().mean().item()), dormant_mask

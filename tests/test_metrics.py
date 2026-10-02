@@ -22,3 +22,14 @@ def test_stable_rank():
     acts = torch.randn(B, D)
     srank = compute_stable_rank(acts)
     assert 1.0 <= srank <= min(B, D)
+
+from plasticity_diagnostics.metrics import compute_dormant_neurons
+
+def test_dormant_neurons():
+    B, D = 50, 20
+    acts = torch.ones(B, D)
+    acts[:, :5] = 1e-4
+    dormant_ratio, mask = compute_dormant_neurons(acts, tau=0.05)
+    assert dormant_ratio == pytest.approx(5 / D, abs=1e-3)
+    assert mask[:5].all()
+    assert not mask[5:].any()

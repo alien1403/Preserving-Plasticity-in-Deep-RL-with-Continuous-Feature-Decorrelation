@@ -43,3 +43,9 @@ def compute_dormant_neurons(activations: torch.Tensor, tau: float = 0.05, eps: f
     normalized_scores = mean_act / (layer_mean + eps)
     dormant_mask = normalized_scores <= tau
     return float(dormant_mask.float().mean().item()), dormant_mask
+
+def compute_dead_relus(activations: torch.Tensor, eps: float = 1e-8) -> float:
+    if activations.ndim > 2:
+        activations = activations.reshape(activations.shape[0], -1)
+    max_acts = torch.max(torch.abs(activations), dim=0)[0]
+    return float((max_acts < eps).float().mean().item())

@@ -33,3 +33,12 @@ def test_dormant_neurons():
     assert dormant_ratio == pytest.approx(5 / D, abs=1e-3)
     assert mask[:5].all()
     assert not mask[5:].any()
+
+from plasticity_diagnostics.metrics import compute_dead_relus
+
+def test_dead_relus():
+    B, D = 40, 10
+    acts = torch.relu(torch.randn(B, D))
+    acts[:, :3] = 0.0
+    dead_ratio = compute_dead_relus(acts)
+    assert dead_ratio >= 0.3

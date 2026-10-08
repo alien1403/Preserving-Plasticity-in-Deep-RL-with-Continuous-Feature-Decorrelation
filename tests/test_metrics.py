@@ -42,3 +42,11 @@ def test_dead_relus():
     acts[:, :3] = 0.0
     dead_ratio = compute_dead_relus(acts)
     assert dead_ratio >= 0.3
+import torch.nn as nn
+from plasticity_diagnostics.metrics import compute_weight_metrics
+
+def test_weight_metrics():
+    linear = nn.Linear(32, 64)
+    metrics = compute_weight_metrics(linear)
+    assert "frobenius_norm" in metrics and "spectral_norm" in metrics
+    assert metrics["frobenius_norm"] > 0.0 and metrics["spectral_norm"] > 0.0

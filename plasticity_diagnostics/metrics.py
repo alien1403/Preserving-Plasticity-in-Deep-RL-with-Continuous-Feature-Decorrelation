@@ -49,3 +49,19 @@ def compute_dead_relus(activations: torch.Tensor, eps: float = 1e-8) -> float:
         activations = activations.reshape(activations.shape[0], -1)
     max_acts = torch.max(torch.abs(activations), dim=0)[0]
     return float((max_acts < eps).float().mean().item())
+from typing import Dict
+import torch.nn as nn
+
+def compute_weight_metrics(module: nn.Module) -> Dict[str, float]:
+    metrics = {}
+    if hasattr(module, "weight") and module.weight is not None:
+        w = module.weight.data
+        fro_norm = torch.norm(w, p="fro").item()
+        metrics["frobenius_norm"] = float(fro_norm)
+        w_2d = w.reshape(w.shape[0], -1).to(torch.float32)
+        try:
+            s_max = torch.linalg.svdvals(w_2d)[0].item()
+            metrics["spectral_norm"] = float(s_max)
+        except Exception:
+            metrics["spectral_norm"] = float(fro_norm)
+    return metrics

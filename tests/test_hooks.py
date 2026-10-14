@@ -13,12 +13,13 @@ class SimpleMLP(nn.Module):
     def forward(self, x):
         return self.fc2(self.relu(self.fc1(x)))
 
-def test_hook_registration():
+def test_hook_manager_diagnostics():
     model = SimpleMLP()
     hook_mgr = DiagnosticHookManager(model)
-    assert len(hook_mgr.hooks) == 2
     dummy_input = torch.randn(64, 16)
     _ = model(dummy_input)
-    assert "fc1" in hook_mgr.activations and "fc2" in hook_mgr.activations
-    assert hook_mgr.activations["fc1"].shape == (64, 32)
+    stats = hook_mgr.compute_diagnostics(clear_after=True)
+    assert "fc1/effective_rank" in stats and "fc1/dormant_ratio" in stats
+    assert "fc1/frobenius_norm" in stats and "fc2/stable_rank" in stats
+    assert len(hook_mgr.activations) == 0
     hook_mgr.remove_hooks()

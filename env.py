@@ -7,6 +7,7 @@ class NonStationaryCartPole:
         self.seed = seed
         self.total_steps = 0
         self.current_phase = 0
+        self.invert_actions = False
 
     def reset(self):
         obs, info = self.env.reset(seed=self.seed)
@@ -18,7 +19,8 @@ class NonStationaryCartPole:
         if new_phase != self.current_phase:
             self.current_phase = new_phase
             self._apply_phase_shift(self.current_phase)
-        obs, reward, terminated, truncated, info = self.env.step(action)
+        executed_action = 1 - action if self.invert_actions else action
+        obs, reward, terminated, truncated, info = self.env.step(executed_action)
         return obs, reward, terminated or truncated, info
 
     def _apply_phase_shift(self, phase: int):
@@ -27,6 +29,16 @@ class NonStationaryCartPole:
             unwrapped.gravity = 24.5
             unwrapped.length = 0.25
             unwrapped.masspole = 0.2
+            self.invert_actions = False
+        elif phase == 2:
+            unwrapped.gravity = 9.8
+            unwrapped.length = 0.5
+            unwrapped.masspole = 0.1
+            self.invert_actions = True
+        else:
+            unwrapped.gravity = 4.0
+            unwrapped.force_mag = 18.0
+            self.invert_actions = False
 
     @property
     def observation_space(self): return self.env.observation_space

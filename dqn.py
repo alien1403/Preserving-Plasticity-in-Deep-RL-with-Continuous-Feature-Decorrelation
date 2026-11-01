@@ -43,5 +43,28 @@ class DQNAgent:
     def store_transition(self, obs, action, reward, next_obs, done):
         self.buffer.append((obs, action, reward, next_obs, done))
 
+    def update(self):
+        if len(self.buffer) < self.batch_size: return 0.0, 0.0, 0.0
+        batch = random.sample(self.buffer, self.batch_size)
+        obs, actions, rewards, next_obs, dones = zip(*batch)
+        obs_t = torch.tensor(np.array(obs), dtype=torch.float32, device=self.device)
+        actions_t = torch.tensor(actions, dtype=torch.int64, device=self.device).unsqueeze(1)
+        rewards_t = torch.tensor(rewards, dtype=torch.float32, device=self.device).unsqueeze(1)
+        next_obs_t = torch.tensor(np.array(next_obs), dtype=torch.float32, device=self.device)
+        dones_t = torch.tensor(dones, dtype=torch.float32, device=self.device).unsqueeze(1)
+
+        q_vals, features = self.q_net(obs_t)
+        state_action_values = q_vals.gather(1, actions_t)
+        with torch.no_grad():
+            next_q_vals, _ = self.target_net(next_obs_t)
+            max_next_q = next_q_vals.max(1, keepdim=True)[0]
+            target_values = rewards_t + (1 - dones_t) * self.gamma * max_next_q
+        td_loss = nn.functional.mse_loss(state_action_values, target_values)
+        self.optimizer.zero_grad()
+        td_loss.backward()
+        self.optimizer.step()
+        with torch.no_grad(): erank = compute_effective_rank(features)
+        return td_loss.item(), 0.0, erank
+
     def update_target_network(self):
         self.target_net.load_state_dict(self.q_net.state_dict())

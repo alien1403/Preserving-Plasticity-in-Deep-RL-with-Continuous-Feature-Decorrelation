@@ -4,6 +4,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from plasticity_diagnostics.loss import FeatureDecorrelationLoss
 from plasticity_diagnostics.metrics import compute_effective_rank
 
 class QNetwork(nn.Module):
@@ -22,7 +23,7 @@ class QNetwork(nn.Module):
         return q_vals, h2
 
 class DQNAgent:
-    def __init__(self, obs_dim: int, action_dim: int, lr: float = 1e-3, gamma: float = 0.99, buffer_size: int = 20_000, batch_size: int = 64, device: str = "cpu"):
+    def __init__(self, obs_dim: int, action_dim: int, lr: float = 1e-3, gamma: float = 0.99, buffer_size: int = 20_000, batch_size: int = 64, use_covreg: bool = False, covreg_coeff: float = 0.05, device: str = "cpu"):
         self.device = torch.device(device)
         self.q_net = QNetwork(obs_dim, action_dim).to(self.device)
         self.target_net = QNetwork(obs_dim, action_dim).to(self.device)
@@ -32,6 +33,9 @@ class DQNAgent:
         self.batch_size = batch_size
         self.action_dim = action_dim
         self.buffer = deque(maxlen=buffer_size)
+        self.use_covreg = use_covreg
+        self.covreg_coeff = covreg_coeff
+        self.decorr_loss_fn = FeatureDecorrelationLoss()
 
     def select_action(self, obs: np.ndarray, epsilon: float) -> int:
         if random.random() < epsilon: return random.randint(0, self.action_dim - 1)
@@ -60,11 +64,19 @@ class DQNAgent:
             max_next_q = next_q_vals.max(1, keepdim=True)[0]
             target_values = rewards_t + (1 - dones_t) * self.gamma * max_next_q
         td_loss = nn.functional.mse_loss(state_action_values, target_values)
+
+        if self.use_covreg:
+            decorr_loss = self.decorr_loss_fn(features)
+            total_loss = td_loss + self.covreg_coeff * decorr_loss
+        else:
+            decorr_loss = torch.tensor(0.0)
+            total_loss = td_loss
+
         self.optimizer.zero_grad()
-        td_loss.backward()
+        total_loss.backward()
         self.optimizer.step()
         with torch.no_grad(): erank = compute_effective_rank(features)
-        return td_loss.item(), 0.0, erank
+        return total_loss.item(), decorr_loss.item(), erank
 
     def update_target_network(self):
         self.target_net.load_state_dict(self.q_net.state_dict())
